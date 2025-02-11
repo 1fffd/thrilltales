@@ -64,16 +64,18 @@ if (fs.existsSync(DOWNLOADS_JSON)) {
                 try {
                     console.log(`🔄 Attempt ${attempt}/${MAX_RETRIES}...`);
 
-                    // Get the download URL and title from the MP3 API
+                    // Get the download URL and filename from the MP3 API
                     const downloadResponse = await axios.get(`${MP3_API}/${videoId}`);
-                    const { url, title: videoTitle } = downloadResponse.data;
+                    const { url, filename: videoTitle } = downloadResponse.data;
 
                     if (!url) {
                         throw new Error("phuck ho ga guru");
                     }
 
-                    // Ensure we have a valid title
-                    const title = videoTitle && videoTitle.trim() ? videoTitle.trim() : `Video ${videoId}`;
+                    // Clean up filename to use as title (remove .mp3 extension if present)
+                    const title = videoTitle 
+                        ? videoTitle.replace(/\.mp3$/, '').trim() 
+                        : `Video ${videoId}`;
 
                     // Download the audio file
                     const writer = fs.createWriteStream(filePath);
@@ -99,9 +101,9 @@ if (fs.existsSync(DOWNLOADS_JSON)) {
                     }
 
                     console.log(`✅ kaam ho gya guru ${filePath} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
-                    console.log(`📝 Title: ${title}`);
+                    console.log(`📝 Title from filename: ${title}`);
 
-                    // Save to downloads.json with the correct title
+                    // Save to downloads.json with the filename as title
                     downloadsData[videoId] = {
                         title: title,
                         id: videoId,
