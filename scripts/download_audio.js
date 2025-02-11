@@ -43,7 +43,7 @@ if (fs.existsSync(DOWNLOADS_JSON)) {
             process.exit(1);
         }
 
-        const videoIds = response.data.videos; // Now just an array of video IDs
+        const videoIds = response.data.videos;
         console.log(`📹 mujhe ${videoIds.length} videos mili h dekhta hu kitni bachi h`);
 
         for (const videoId of videoIds) {
@@ -64,13 +64,16 @@ if (fs.existsSync(DOWNLOADS_JSON)) {
                 try {
                     console.log(`🔄 Attempt ${attempt}/${MAX_RETRIES}...`);
 
-                    // Get the download URL from the new MP3 API
+                    // Get the download URL and title from the MP3 API
                     const downloadResponse = await axios.get(`${MP3_API}/${videoId}`);
-                    const { url, title } = downloadResponse.data;
+                    const { url, title: videoTitle } = downloadResponse.data;
 
                     if (!url) {
                         throw new Error("phuck ho ga guru");
                     }
+
+                    // Ensure we have a valid title
+                    const title = videoTitle && videoTitle.trim() ? videoTitle.trim() : `Video ${videoId}`;
 
                     // Download the audio file
                     const writer = fs.createWriteStream(filePath);
@@ -78,7 +81,7 @@ if (fs.existsSync(DOWNLOADS_JSON)) {
                         url,
                         method: "GET",
                         responseType: "stream",
-                        timeout: 30000 // 30 second timeout
+                        timeout: 30000
                     });
 
                     audioResponse.data.pipe(writer);
@@ -96,10 +99,11 @@ if (fs.existsSync(DOWNLOADS_JSON)) {
                     }
 
                     console.log(`✅ kaam ho gya guru ${filePath} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
+                    console.log(`📝 Title: ${title}`);
 
-                    // Save to downloads.json
+                    // Save to downloads.json with the correct title
                     downloadsData[videoId] = {
-                        title: title || videoId, // Use title from API response if available
+                        title: title,
                         id: videoId,
                         filePath: fileUrl,
                         size: fileSize
@@ -108,7 +112,7 @@ if (fs.existsSync(DOWNLOADS_JSON)) {
                     fs.writeFileSync(DOWNLOADS_JSON, JSON.stringify(downloadsData, null, 2));
 
                     // Commit the file immediately
-                    commitFile(filePath, videoId);
+                    commitFile(filePath, videoId, title);
                     success = true;
                     break;
                 } catch (err) {
@@ -116,7 +120,6 @@ if (fs.existsSync(DOWNLOADS_JSON)) {
                     if (attempt === MAX_RETRIES) {
                         console.error(`❌ Failed after ${MAX_RETRIES} attempts, skipping.`);
                     }
-                    // Add a delay before retrying
                     await new Promise(resolve => setTimeout(resolve, 2000));
                 }
             }
@@ -130,17 +133,12 @@ if (fs.existsSync(DOWNLOADS_JSON)) {
     }
 })();
 
-/**
- * Commits a downloaded file to the repository
- * @param {string} filePath
- * @param {string} videoId
- */
-function commitFile(filePath, videoId) {
+function commitFile(filePath, videoId, title) {
     try {
         execSync("git config --global user.name 'github-actions'");
         execSync("git config --global user.email 'github-actions@github.com'");
         execSync(`git add "${filePath}" "${DOWNLOADS_JSON}"`);
-        execSync(`git commit -m "Add downloaded audio for ${videoId}"`);
+        execSync(`git commit -m "Add downloaded audio: ${title} (${videoId})"`);
         execSync("git push");
         console.log(`📤 Committed and pushed ${filePath}`);
     } catch (err) {
