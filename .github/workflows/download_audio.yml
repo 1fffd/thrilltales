@@ -1,0 +1,28 @@
+name: Download YouTube Channel Audios
+
+on:
+  schedule:
+    - cron: '0 */3 * * *'  # Runs every 3 hours (00:00, 03:00, 06:00, etc. UTC)
+  workflow_dispatch:  # Allows manual trigger
+
+permissions:
+  contents: write  # ✅ Allows pushing changes to the repo
+
+jobs:
+  download-audio:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install axios fs
+
+      - name: Run download script
+        run: node scripts/download_audio.js
