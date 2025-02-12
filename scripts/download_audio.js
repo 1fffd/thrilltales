@@ -23,7 +23,7 @@ if (fs.existsSync(DOWNLOADS_JSON)) {
         downloadsData = JSON.parse(fs.readFileSync(DOWNLOADS_JSON, "utf-8"));
         for (const videoId in downloadsData) {
             if (!downloadsData[videoId].filePath.startsWith(FILE_BASE_URL)) {
-                downloadsData[videoId].filePath = `${FILE_BASE_URL}${videoId}.mp3`;
+                downloadsData[videoId].filePath = `${FILE_BASE_URL}${videoId}.webm`;
             }
         }
         fs.writeFileSync(DOWNLOADS_JSON, JSON.stringify(downloadsData, null, 2));
