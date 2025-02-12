@@ -47,7 +47,7 @@ if (fs.existsSync(DOWNLOADS_JSON)) {
         console.log(`📹 mujhe ${videoIds.length} videos mili h dekhta hu kitni bachi h`);
 
         for (const videoId of videoIds) {
-            const filename = `${videoId}.mp3`;
+            const filename = `${videoId}.webm`;
             const filePath = path.join(DOWNLOAD_DIR, filename);
             const fileUrl = `${FILE_BASE_URL}${filename}`;
 
