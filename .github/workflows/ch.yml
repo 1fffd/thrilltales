@@ -1,0 +1,102 @@
+name: Sync Channel Data v2
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  sync-channel-data:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+        
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Fetch and process data
+        run: |
+          node - <<'EOF'
+          const https = require('https');
+
+          function httpsGet(url) {
+              return new Promise((resolve, reject) => {
+                  https.get(url, (res) => {
+                      let data = '';
+                      res.on('data', chunk => data += chunk);
+                      res.on('end', () => {
+                          try {
+                              resolve(JSON.parse(data));
+                          } catch (e) {
+                              reject(e);
+                          }
+                      });
+                  }).on('error', reject);
+              });
+          }
+
+          async function main() {
+              try {
+                  console.log('Fetching downloads.json...');
+                  const downloads = await httpsGet(
+                      'https://raw.githubusercontent.com/1fffd/thrilltales/refs/heads/main/downloads.json'
+                  );
+
+                  console.log('Fetching channel data...');
+                  const channelData = await httpsGet(
+                      'https://backendmix.vercel.app/c/UCcKMjICfQPjiVMpqS-yF7hA'
+                  );
+
+                  if (channelData.status !== 'ok' || !channelData.videos) {
+                      throw new Error('Invalid response from API');
+                  }
+
+                  // Filter and process videos
+                  const processedVideos = channelData.videos
+                      .filter(video => downloads[video.id])
+                      .map(video => ({
+                          videoId: video.id,
+                          title: video.title,
+                          description: video.shortDescription,
+                          filePath: downloads[video.id].filePath,
+                          published: video.uploaded,
+                          publishedText: video.uploadDate,
+                          viewCount: video.views,
+                          lengthSeconds: video.duration,
+                          liveNow: false,
+                          author: video.uploaderName,
+                          authorId: video.uploaderId
+                      }));
+
+                  console.log(`Processed ${processedVideos.length} matching videos`);
+
+                  // Save result
+                  require('fs').writeFileSync(
+                      'channel.json',
+                      JSON.stringify({
+                          totalVideos: processedVideos.length,
+                          videos: processedVideos
+                      }, null, 2)
+                  );
+
+              } catch (error) {
+                  console.error('Error:', error);
+                  process.exit(1);
+              }
+          }
+
+          main();
+          EOF
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add channel.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update channel data" && git push)
