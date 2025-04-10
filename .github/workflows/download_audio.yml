@@ -1,28 +1,39 @@
-name: Download YouTube Channel Audios
-
+name: Download YouTube Audio and Upload to Internet Archive v2
 on:
   schedule:
     - cron: '0 */3 * * *'  # Runs every 3 hours (00:00, 03:00, 06:00, etc. UTC)
   workflow_dispatch:  # Allows manual trigger
-
 permissions:
   contents: write  # ✅ Allows pushing changes to the repo
-
 jobs:
-  download-audio:
+  download-upload-audio:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
+        
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 20
-
-      - name: Install dependencies
-        run: npm install axios fs
-
-      - name: Run download script
-        run: node scripts/download_audio.js
+          
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          
+      - name: Install Node.js dependencies
+        run: npm install axios fs-extra
+        
+      - name: Install Python dependencies
+        run: pip install internetarchive
+        
+      - name: Create directories
+        run: mkdir -p temp_downloads
+        
+      - name: Run download and upload script
+        run: node ./scripts/download_upload.js
+        env:
+          IA_ACCESS_KEY: ${{ secrets.IA_ACCESS_KEY }}
+          IA_SECRET_KEY: ${{ secrets.IA_SECRET_KEY }}
+          IA_IDENTIFIER: akkidark
